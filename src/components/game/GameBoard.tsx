@@ -27,14 +27,17 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
   const boardRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   // 3D rotation state
-  const [rotation, setRotation] = useState({ x: 20, y: -20 });
+  const [rotation, setRotation] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragRef = useRef<{ x: number; y: number } | null>(null);
+  // Track the last face button rotation for smooth drag
+  const lastFaceRotation = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   // Mouse/touch drag handlers for 3D rotation
   const handlePointerDown = (e: React.PointerEvent) => {
     dragRef.current = {
       x: e.clientX,
       y: e.clientY,
     };
+    lastFaceRotation.current = { ...rotation };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
 
@@ -43,10 +46,11 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
     const dx = e.clientX - dragRef.current.x;
     const dy = e.clientY - dragRef.current.y;
     dragRef.current = { x: e.clientX, y: e.clientY };
-    setRotation((rot) => ({
-      x: Math.max(-80, Math.min(80, rot.x + dy * 0.5)),
-      y: rot.y + dx * 0.5,
-    }));
+    setRotation((rot) => {
+      const newX = Math.max(-80, Math.min(80, lastFaceRotation.current.x + dy * 0.5));
+      const newY = lastFaceRotation.current.y + dx * 0.5;
+      return { x: newX, y: newY };
+    });
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -172,22 +176,22 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
                 />
               );
             })}
-            {/* Render tiles as 3D cubes inside the board */}
+          
             {tiles.map((tile) => (
               <Tile key={tile.id} {...tile} gridSize={gridSize} tileSize={tileSize} tileGap={tileGap} />
             ))}
           </div>
         ))}
       </div>
-      {/* Face selection controls (for now, simple buttons) */}
+   
       <div className="flex gap-2 mt-4 absolute left-1/2 -translate-x-1/2 bottom-0">
         {['Front', 'Back', 'Right', 'Left', 'Top', 'Bottom'].map((label, idx) => {
           // Define the rotation for each face
           const faceRotations = [
             { x: 0, y: 0 },      // Front
             { x: 0, y: 180 },    // Back
-            { x: 0, y: 90 },     // Right
-            { x: 0, y: -90 },    // Left
+            { x: 0, y: -90 },    // Right 
+            { x: 0, y: 90 },     // Left 
             { x: -90, y: 0 },    // Top
             { x: 90, y: 0 },     // Bottom
           ];
@@ -198,6 +202,7 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
               onClick={() => {
                 setActiveFace(idx);
                 setRotation(faceRotations[idx]);
+                lastFaceRotation.current = faceRotations[idx];
               }}
             >
               {label}
