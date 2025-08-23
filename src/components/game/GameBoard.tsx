@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import { useEffect, useRef, useState } from 'react';
 import type { Tile as TileType } from '@/types';
@@ -24,6 +24,32 @@ const faceTransforms = [
 ];
 
 export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }: GameBoardProps) {
+  // Touch drag handlers for 3D rotation (mobile support)
+  const touchDragRef = useRef<{ x: number; y: number } | null>(null);
+  const lastTouchRotation = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleTouchCubeStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchDragRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    };
+    lastTouchRotation.current = { ...rotation };
+  };
+
+  const handleTouchCubeMove = (e: React.TouchEvent) => {
+    if (!touchDragRef.current || e.touches.length !== 1) return;
+    const dx = e.touches[0].clientX - touchDragRef.current.x;
+    const dy = e.touches[0].clientY - touchDragRef.current.y;
+    const newX = Math.max(-80, Math.min(80, lastTouchRotation.current.x + dy * 0.5));
+    const newY = lastTouchRotation.current.y + dx * 0.5;
+    setRotation({ x: newX, y: newY });
+  };
+
+  const handleTouchCubeEnd = (e: React.TouchEvent) => {
+    lastTouchRotation.current = { ...rotation };
+    touchDragRef.current = null;
+  };
   const boardRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   // 3D rotation state
@@ -31,7 +57,7 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   // Track the last face button rotation for smooth drag
   const lastFaceRotation = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  // Mouse/touch drag handlers for 3D rotation
+  // Mouse/touch drag handlers for 3D rotation (accumulate deltas for smooth rotation)
   const handlePointerDown = (e: React.PointerEvent) => {
     dragRef.current = {
       x: e.clientX,
@@ -43,17 +69,18 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragRef.current) return;
+    // Use the initial drag position for delta calculation
     const dx = e.clientX - dragRef.current.x;
     const dy = e.clientY - dragRef.current.y;
-    dragRef.current = { x: e.clientX, y: e.clientY };
-    setRotation((rot) => {
-      const newX = Math.max(-80, Math.min(80, lastFaceRotation.current.x + dy * 0.5));
-      const newY = lastFaceRotation.current.y + dx * 0.5;
-      return { x: newX, y: newY };
-    });
+    // Calculate new rotation based on initial drag and last face rotation
+    const newX = Math.max(-80, Math.min(80, lastFaceRotation.current.x + dy * 0.5));
+    const newY = lastFaceRotation.current.y + dx * 0.5;
+    setRotation({ x: newX, y: newY });
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    // On drag end, update lastFaceRotation to the new rotation
+    lastFaceRotation.current = { ...rotation };
     dragRef.current = null;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   };
@@ -135,6 +162,9 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onTouchStart={handleTouchCubeStart}
+        onTouchMove={handleTouchCubeMove}
+        onTouchEnd={handleTouchCubeEnd}
         tabIndex={-1}
       >
         {faces.map((tiles, faceIdx) => (
