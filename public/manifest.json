@@ -1,0 +1,10 @@
+{
+  "name": "Grid Saga",
+  "short_name": "Grid Saga",
+  "description": "A modern take on the classic 2048 game with exciting new features.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0614",
+  "theme_color": "#8c52ff"
+
+}
