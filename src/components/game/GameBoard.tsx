@@ -24,31 +24,61 @@ const faceTransforms = [
 ];
 
 export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }: GameBoardProps) {
-  // Touch drag handlers for 3D rotation (mobile support)
+  // Touch drag handlers for 3D rotation (two-finger) and swipe for moves (single-finger)
   const touchDragRef = useRef<{ x: number; y: number } | null>(null);
   const lastTouchRotation = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isRotating, setIsRotating] = useState(false);
 
-  const handleTouchCubeStart = (e: React.TouchEvent) => {
-    if (e.touches.length !== 1) return;
-    touchDragRef.current = {
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-    };
-    lastTouchRotation.current = { ...rotation };
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Two-finger: start cube rotation
+      setIsRotating(true);
+      touchDragRef.current = {
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      };
+      lastTouchRotation.current = { ...rotation };
+    } else if (e.touches.length === 1) {
+      // One-finger: start swipe for move
+      setIsRotating(false);
+      setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
   };
 
-  const handleTouchCubeMove = (e: React.TouchEvent) => {
-    if (!touchDragRef.current || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - touchDragRef.current.x;
-    const dy = e.touches[0].clientY - touchDragRef.current.y;
-    const newX = Math.max(-80, Math.min(80, lastTouchRotation.current.x + dy * 0.5));
-    const newY = lastTouchRotation.current.y + dx * 0.5;
-    setRotation({ x: newX, y: newY });
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isRotating && e.touches.length === 2 && touchDragRef.current) {
+      // Two-finger drag for cube rotation
+      const x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const dx = x - touchDragRef.current.x;
+      const dy = y - touchDragRef.current.y;
+      const newX = Math.max(-80, Math.min(80, lastTouchRotation.current.x + dy * 0.5));
+      const newY = lastTouchRotation.current.y + dx * 0.5;
+      setRotation({ x: newX, y: newY });
+    }
   };
 
-  const handleTouchCubeEnd = (e: React.TouchEvent) => {
-    lastTouchRotation.current = { ...rotation };
-    touchDragRef.current = null;
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (isRotating) {
+      lastTouchRotation.current = { ...rotation };
+      touchDragRef.current = null;
+      setIsRotating(false);
+    } else if (touchStart) {
+      // One-finger swipe for move
+      if (e.changedTouches.length === 1) {
+        const touchEnd = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+        const dx = touchEnd.x - touchStart.x;
+        const dy = touchEnd.y - touchStart.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 50) onMove('right');
+          else if (dx < -50) onMove('left');
+        } else {
+          if (dy > 50) onMove('down');
+          else if (dy < -50) onMove('up');
+        }
+      }
+      setTouchStart(null);
+    }
   };
   const boardRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -117,27 +147,7 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
     };
   }, [onMove]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStart) return;
-
-    const touchEnd = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-    const dx = touchEnd.x - touchStart.x;
-    const dy = touchEnd.y - touchStart.y;
-
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 50) onMove('right');
-      else if (dx < -50) onMove('left');
-    } else {
-      if (dy > 50) onMove('down');
-      else if (dy < -50) onMove('up');
-    }
-
-    setTouchStart(null);
-  };
+  // (Old handleTouchStart and handleTouchEnd removed; unified logic above)
 
   // For 3D cube grid, we don't use CSS grid, but absolute positioning in 3D
   const cubeSize = 400; // px, size of the board cube
@@ -162,9 +172,9 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onTouchStart={handleTouchCubeStart}
-        onTouchMove={handleTouchCubeMove}
-        onTouchEnd={handleTouchCubeEnd}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         tabIndex={-1}
       >
         {faces.map((tiles, faceIdx) => (
