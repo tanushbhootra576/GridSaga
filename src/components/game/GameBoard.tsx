@@ -181,15 +181,29 @@ export function GameBoard({ faces, activeFace, setActiveFace, gridSize, onMove }
       </div>
       {/* Face selection controls (for now, simple buttons) */}
       <div className="flex gap-2 mt-4 absolute left-1/2 -translate-x-1/2 bottom-0">
-        {['Front', 'Back', 'Right', 'Left', 'Top', 'Bottom'].map((label, idx) => (
-          <button
-            key={label}
-            className={`px-2 py-1 rounded ${activeFace === idx ? 'bg-primary text-white' : 'bg-muted'}`}
-            onClick={() => setActiveFace(idx)}
-          >
-            {label}
-          </button>
-        ))}
+        {['Front', 'Back', 'Right', 'Left', 'Top', 'Bottom'].map((label, idx) => {
+          // Define the rotation for each face
+          const faceRotations = [
+            { x: 0, y: 0 },      // Front
+            { x: 0, y: 180 },    // Back
+            { x: 0, y: 90 },     // Right
+            { x: 0, y: -90 },    // Left
+            { x: -90, y: 0 },    // Top
+            { x: 90, y: 0 },     // Bottom
+          ];
+          return (
+            <button
+              key={label}
+              className={`px-2 py-1 rounded ${activeFace === idx ? 'bg-primary text-white' : 'bg-muted'}`}
+              onClick={() => {
+                setActiveFace(idx);
+                setRotation(faceRotations[idx]);
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
