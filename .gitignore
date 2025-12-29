@@ -12,7 +12,6 @@
 
 # testing
 /coverage
-.env
 # next.js
 /.next/
 /out/
@@ -38,11 +37,10 @@ yarn-error.log*
 next-env.d.ts
 
 .genkit/*
-.env*
 
 # firebase
 firebase-debug.log
 firestore-debug.log
 
 
-.env
+config.bat
